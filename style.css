@@ -204,3 +204,6 @@ html, body{max-width:100%;overflow-x:hidden}
 
 /* Sprint 1.6: galerijdata uit CMS, layout blijft v4 */
 .gallery-item span small{display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--muted)}
+
+/* Sprint 1.8 - CMS pagina-inhoud: laat v4-layout intact en voegt alleen optionele content toe */
+.cms-page-section{padding-top:40px;padding-bottom:20px}.cms-page-section .cms-content{max-width:920px;margin:0 auto}.cms-content .card-content>*:first-child{margin-top:0}.cms-content .card-content>*:last-child{margin-bottom:0}.cms-content img{max-width:100%;height:auto;border-radius:14px}.cms-content figure{margin:22px 0}.cms-content figcaption{font-size:14px;color:#65708a;margin-top:8px}.cms-content h2,.cms-content h3{color:#071b3a}

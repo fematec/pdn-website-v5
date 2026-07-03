@@ -131,10 +131,10 @@
     return f === 'index' || f === '' ? 'home' : f;
   }
 
-  async function loadCmsPageMetaOnly() {
-    // Bewust veilig: geen complete v4-secties vervangen. Alleen titel/lead/meta als CMS dit levert.
+  async function loadCmsPage() {
+    // Bewust veilig: v4-layout blijft staan. CMS mag titel/lead/meta aanvullen
+    // en optioneel een extra CMS-contentblok plaatsen als er inhoud is ingevuld.
     const slug = currentSlug();
-    // Voorkomt onnodige 404's op vaste pagina's zoals clubnieuws/fotogalerij.
     const cmsManagedSlugs = ['home', 'over-ons', 'geschiedenis', 'disciplines', 'contact'];
     if (!cmsManagedSlugs.includes(slug)) return;
     try {
@@ -155,7 +155,28 @@
       }
       if (p.seo_title) document.title = p.seo_title;
       upsertMeta('description', p.seo_description || p.description || '');
+
+      renderCmsPageContent(p);
     } catch (e) {}
+  }
+
+  function renderCmsPageContent(page) {
+    const content = String(page.content || '').trim();
+    if (!content || !stripHtml(content)) return;
+    if (document.getElementById('cms-page-content')) return;
+
+    const section = document.createElement('section');
+    section.id = 'cms-page-content';
+    section.className = 'section compact cms-page-section';
+    section.innerHTML = `<div class="cms-content card"><div class="card-content">${content}</div></div>`;
+
+    const after = document.querySelector('.page-hero') || document.querySelector('.hero');
+    if (after && after.parentNode) after.parentNode.insertBefore(section, after.nextSibling);
+    else {
+      const header = document.querySelector('.header');
+      if (header && header.parentNode) header.parentNode.insertBefore(section, header.nextSibling);
+      else document.body.insertBefore(section, document.body.firstChild);
+    }
   }
 
   function upsertMeta(name, content) {
@@ -284,7 +305,7 @@
   // Alleen inhoudsdata zoals nieuws en galerij wordt uit het CMS geladen.
   // loadSettings();
   // loadMenu();
-  loadCmsPageMetaOnly();
+  loadCmsPage();
   loadNews();
   loadGallery();
 })();
