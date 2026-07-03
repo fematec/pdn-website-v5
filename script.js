@@ -127,42 +127,64 @@
 
   function slugFromHref(href) { return String(href || '').replace(/^.*\//, '').replace(/\.html$/, '') || 'home'; }
   function currentSlug() {
+    const querySlug = new URLSearchParams(location.search).get('slug');
+    if (querySlug) return cleanSlug(querySlug);
     const f = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '');
-    return f === 'index' || f === '' ? 'home' : f;
+    if (f === 'pagina' || f === 'page') return cleanSlug(querySlug || '');
+    return f === 'index' || f === '' ? 'home' : cleanSlug(f);
+  }
+
+  function cleanSlug(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'home';
+  }
+
+  function isGenericCmsPage() {
+    return ['pagina.html', 'page.html'].includes(location.pathname.split('/').pop() || '');
   }
 
   async function loadCmsPage() {
-    // Bewust veilig: v4-layout blijft staan. CMS mag titel/lead/meta aanvullen
-    // en optioneel een extra CMS-contentblok plaatsen als er inhoud is ingevuld.
     const slug = currentSlug();
-    const cmsManagedSlugs = ['home', 'over-ons', 'geschiedenis', 'disciplines', 'contact'];
-    if (!cmsManagedSlugs.includes(slug)) return;
+    const staticCmsSlugs = ['home', 'over-ons', 'geschiedenis', 'disciplines', 'contact'];
+    const generic = isGenericCmsPage();
+    if (!generic && !staticCmsSlugs.includes(slug)) return;
+
     try {
       const d = await api('/pages/' + encodeURIComponent(slug));
       const p = pickObject(d, ['page', 'item']);
-      if (!p || p.status === 'concept' || p.published === false) return;
-
-      const title = p.title || p.name;
-      const lead = p.summary || p.excerpt || p.lead;
-      if (title) {
-        const h = document.querySelector('.page-hero h1');
-        if (h) h.textContent = title;
-        if (slug !== 'home') document.title = `${title} | S.V. De Prins der Nederlanden`;
+      if (!p || p.status === 'concept' || p.published === false) {
+        if (generic) renderCms404(slug);
+        return;
       }
-      if (lead) {
-        const leadEl = document.querySelector('.page-hero .lead');
-        if (leadEl) leadEl.textContent = lead;
-      }
-      if (p.seo_title) document.title = p.seo_title;
-      upsertMeta('description', p.seo_description || p.description || '');
 
-      renderCmsPageContent(p);
-    } catch (e) {}
+      const title = p.title || p.name || slug;
+      const lead = p.summary || p.excerpt || p.lead || '';
+      setPageHero(title, lead);
+      document.title = p.seo_title || `${title} | S.V. De Prins der Nederlanden`;
+      upsertMeta('description', p.seo_description || p.description || stripHtml(p.content || '').slice(0, 160));
+
+      renderCmsPageContent(p, { replaceStatic: slug !== 'home' || generic, generic });
+    } catch (e) {
+      if (generic) renderCms404(slug);
+    }
   }
 
-  function renderCmsPageContent(page) {
+  function setPageHero(title, lead) {
+    const h = document.querySelector('.page-hero h1');
+    if (h && title) h.textContent = title;
+    const leadEl = document.querySelector('.page-hero .lead');
+    if (leadEl) leadEl.textContent = lead || 'Deze pagina wordt beheerd vanuit het CMS.';
+  }
+
+  function renderCmsPageContent(page, options = {}) {
     const content = String(page.content || '').trim();
-    if (!content || !stripHtml(content)) return;
+    if (!content || !stripHtml(content)) {
+      if (options.generic) renderCmsEmptyPage(page);
+      return;
+    }
     if (document.getElementById('cms-page-content')) return;
 
     const section = document.createElement('section');
@@ -170,13 +192,40 @@
     section.className = 'section compact cms-page-section';
     section.innerHTML = `<div class="cms-content card"><div class="card-content">${content}</div></div>`;
 
-    const after = document.querySelector('.page-hero') || document.querySelector('.hero');
-    if (after && after.parentNode) after.parentNode.insertBefore(section, after.nextSibling);
+    const hero = document.querySelector('.page-hero') || document.querySelector('.hero');
+    if (options.replaceStatic && hero) removeStaticSectionsAfter(hero);
+
+    if (hero && hero.parentNode) hero.parentNode.insertBefore(section, hero.nextSibling);
     else {
       const header = document.querySelector('.header');
       if (header && header.parentNode) header.parentNode.insertBefore(section, header.nextSibling);
       else document.body.insertBefore(section, document.body.firstChild);
     }
+  }
+
+  function removeStaticSectionsAfter(hero) {
+    let node = hero.nextElementSibling;
+    while (node && !node.classList.contains('footer')) {
+      const next = node.nextElementSibling;
+      if (node.tagName && node.tagName.toLowerCase() === 'section') node.remove();
+      node = next;
+    }
+  }
+
+  function renderCmsEmptyPage(page) {
+    renderCmsPageContent({ content: '<p>Deze pagina is gepubliceerd, maar bevat nog geen inhoud.</p>' }, { generic: false, replaceStatic: true });
+  }
+
+  function renderCms404(slug) {
+    setPageHero('Pagina niet gevonden', 'Deze pagina bestaat niet of is nog niet gepubliceerd.');
+    document.title = 'Pagina niet gevonden | S.V. De Prins der Nederlanden';
+    const hero = document.querySelector('.page-hero') || document.querySelector('.hero');
+    if (hero) removeStaticSectionsAfter(hero);
+    const section = document.createElement('section');
+    section.id = 'cms-page-content';
+    section.className = 'section compact cms-page-section';
+    section.innerHTML = `<div class="cms-content card"><div class="card-content"><h2>Niet gevonden</h2><p>De pagina <strong>${escapeHtml(slug)}</strong> bestaat niet of staat nog op concept.</p><p><a class="btn dark" href="index.html">Terug naar home</a></p></div></div>`;
+    if (hero && hero.parentNode) hero.parentNode.insertBefore(section, hero.nextSibling);
   }
 
   function upsertMeta(name, content) {
@@ -396,9 +445,22 @@
   function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
   function escapeAttr(s) { return escapeHtml(s).replace(/`/g, '&#96;'); }
 
-  // V4-layout herstel: header, merknaam, navigatie en footer blijven exact uit de HTML/CSS.
-  // Daarom worden instellingen en menu NIET meer vanuit het CMS over de v4-layout heen geschreven.
-  // Alleen inhoudsdata zoals nieuws en galerij wordt uit het CMS geladen.
+  function publicPageUrl(slug) {
+    slug = cleanSlug(slug);
+    const staticMap = {
+      home: 'index.html',
+      'over-ons': 'over-ons.html',
+      geschiedenis: 'geschiedenis.html',
+      disciplines: 'disciplines.html',
+      contact: 'contact.html'
+    };
+    return staticMap[slug] || `pagina.html?slug=${encodeURIComponent(slug)}`;
+  }
+
+  // V4-layout herstel: header, merknaam, navigatie en footer blijven uit de HTML/CSS.
+  // Sprint 3 maakt pagina-inhoud wel dynamisch: bestaande pagina's worden vervangen door
+  // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via
+  // pagina.html?slug=... .
   // loadSettings();
   // loadMenu();
   loadCmsPage();
