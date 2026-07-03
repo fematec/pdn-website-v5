@@ -261,8 +261,11 @@
   function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
   function escapeAttr(s) { return escapeHtml(s).replace(/`/g, '&#96;'); }
 
-  loadSettings();
-  loadMenu();
+  // V4-layout herstel: header, merknaam, navigatie en footer blijven exact uit de HTML/CSS.
+  // Daarom worden instellingen en menu NIET meer vanuit het CMS over de v4-layout heen geschreven.
+  // Alleen inhoudsdata zoals nieuws en galerij wordt uit het CMS geladen.
+  // loadSettings();
+  // loadMenu();
   loadCmsPageMetaOnly();
   loadNews();
   loadGallery();
