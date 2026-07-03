@@ -222,7 +222,7 @@
     try {
       const d = await api('/media');
       const data = pickArray(d, ['media', 'images', 'files', 'items'])
-        .filter(m => String(m.mime_type || m.type || 'image/').startsWith('image/') || m.data_url || m.url || m.image_url);
+        .filter(isGalleryImage);
       renderGallery(el, data, true);
     } catch (e) {
       try {
@@ -234,15 +234,33 @@
     }
   }
 
+  function isGalleryImage(m) {
+    if (!m) return false;
+    const type = String(m.mime_type || m.type || '').toLowerCase();
+    const url = String(m.data_url || m.url || m.image_url || m.src || '').toLowerCase();
+    return type.startsWith('image/') || url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif|svg)(\?|#|$)/.test(url) || !!m.r2_key;
+  }
+
   function renderGallery(el, data, fromCms) {
-    if (!data || !data.length) { el.innerHTML = '<p>Er staan nog geen foto’s in de galerij.</p>'; return; }
-    el.innerHTML = data.slice().sort((a, b) => String(b.uploaded_at || b.created_at || '').localeCompare(String(a.uploaded_at || a.created_at || '')))
-      .map(g => {
-        const url = absoluteMediaUrl(g.data_url || g.url || g.image_url || g.src || '');
-        const title = g.title || g.caption || g.filename || g.album || 'Verenigingsfoto';
-        if (!url) return '';
-        return `<a class="gallery-item" href="${escapeAttr(url)}" target="_blank" rel="noopener"><img src="${escapeAttr(url)}" alt="${escapeAttr(title)}"><span>${escapeHtml(title)}</span></a>`;
-      }).join('');
+    if (!data || !data.length) {
+      el.innerHTML = '<p>Er staan nog geen foto’s in de galerij. Foto’s die je in het CMS uploadt verschijnen hier automatisch.</p>';
+      return;
+    }
+
+    const items = data.slice().sort((a, b) =>
+      String(b.uploaded_at || b.created_at || b.updated_at || '').localeCompare(String(a.uploaded_at || a.created_at || a.updated_at || ''))
+    );
+
+    el.innerHTML = items.map(g => {
+      const url = absoluteMediaUrl(g.data_url || g.url || g.image_url || g.src || (g.id ? '/media-file/' + g.id : ''));
+      const title = g.title || g.caption || g.filename || g.album_name || g.album || 'Verenigingsfoto';
+      const album = g.album_name || g.album || '';
+      if (!url) return '';
+      return `<a class="gallery-item" href="${escapeAttr(url)}" target="_blank" rel="noopener">` +
+        `<img src="${escapeAttr(url)}" alt="${escapeAttr(title)}" loading="lazy">` +
+        `<span>${escapeHtml(title)}${album ? `<small>${escapeHtml(album)}</small>` : ''}</span>` +
+      `</a>`;
+    }).join('');
   }
 
   function formatDate(s) {

@@ -201,3 +201,6 @@ html, body{max-width:100%;overflow-x:hidden}
 
 /* CMS-koppeling fase 1 */
 .nav-group{position:relative;display:inline-block}.nav-group>a{display:inline-block}.submenu{display:none;position:absolute;top:100%;left:0;min-width:210px;background:#fff;border:1px solid rgba(8,41,76,.12);border-radius:14px;box-shadow:0 18px 45px rgba(8,41,76,.16);padding:8px;z-index:30}.submenu a{display:block;white-space:nowrap;padding:10px 12px;border-radius:10px;color:#08294c}.nav-group:hover>.submenu{display:block}.cms-content{max-width:900px}.cms-content img{max-width:100%;height:auto;border-radius:16px}.cms-content figure{margin:22px 0}.cms-content figcaption{font-size:.95rem;opacity:.75;margin-top:8px}.cms-content h2{margin-top:1.8rem}.cms-content a{color:#08294c;font-weight:700}@media(max-width:900px){.submenu{position:static;display:block;background:transparent;box-shadow:none;border:0;padding:0 0 0 12px}.submenu a{color:inherit}.nav-group{display:block}}
+
+/* Sprint 1.6: galerijdata uit CMS, layout blijft v4 */
+.gallery-item span small{display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--muted)}
