@@ -1,0 +1,44 @@
+[
+  {
+    "id": "basis-boog-compound",
+    "title": "Boogschieten",
+    "album": "Disciplines",
+    "image_url": "boog-compound.webp",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "basis-boog-recurve",
+    "title": "Recurveboog",
+    "album": "Disciplines",
+    "image_url": "boog-recurve.jpg",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "basis-luchtdruk-duimgat",
+    "title": "Luchtdruk",
+    "album": "Disciplines",
+    "image_url": "luchtdruk-duimgat.jpg",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "basis-luchtdruk-pcp",
+    "title": "PCP luchtbuks",
+    "album": "Disciplines",
+    "image_url": "luchtdruk-pcp.webp",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "basis-vuurwapen-geweer",
+    "title": "Geweerdiscipline",
+    "album": "Disciplines",
+    "image_url": "vuurwapen-geweer-kijker.webp",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "basis-vuurwapen-pistool",
+    "title": "Pistooldiscipline",
+    "album": "Disciplines",
+    "image_url": "vuurwapen-pistool.jpg",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  }
+]
