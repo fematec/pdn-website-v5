@@ -3,21 +3,35 @@
 
   // Publieke website v5: v4-layout blijft de basis. Alleen deze datalaag praat met het CMS.
   const CMS_API_DIRECT = 'https://pdn-api.info-fematec.workers.dev';
+  const CMS_API_PROXY = '/api';
 
   const btn = document.querySelector('.menu-btn');
   const nav = document.querySelector('.nav');
   if (btn && nav) btn.addEventListener('click', () => nav.classList.toggle('open'));
 
   async function api(path) {
-    const r = await fetch(CMS_API_DIRECT + path, {
-      cache: 'no-store',
-      headers: { 'Accept': 'application/json' }
-    });
-    const data = await r.json().catch(() => null);
-    if (!r.ok || !data || data.ok === false) {
-      throw new Error((data && (data.error || data.message)) || 'CMS niet bereikbaar');
+    // Website v5 draait nu als Cloudflare Worker. De Pages-function /api is daar niet
+    // altijd beschikbaar, daarom eerst direct naar de publieke API en daarna pas proxy-fallback.
+    const bases = [CMS_API_DIRECT, CMS_API_PROXY];
+    let lastError = null;
+
+    for (const base of bases) {
+      try {
+        const r = await fetch(base + path, {
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data || data.ok === false) {
+          throw new Error((data && (data.error || data.message)) || 'CMS niet bereikbaar');
+        }
+        return data;
+      } catch (err) {
+        lastError = err;
+      }
     }
-    return data;
+
+    throw lastError || new Error('CMS niet bereikbaar');
   }
 
   async function fetchJson(path) {
@@ -120,6 +134,9 @@
   async function loadCmsPageMetaOnly() {
     // Bewust veilig: geen complete v4-secties vervangen. Alleen titel/lead/meta als CMS dit levert.
     const slug = currentSlug();
+    // Voorkomt onnodige 404's op vaste pagina's zoals clubnieuws/fotogalerij.
+    const cmsManagedSlugs = ['home', 'over-ons', 'geschiedenis', 'disciplines', 'contact'];
+    if (!cmsManagedSlugs.includes(slug)) return;
     try {
       const d = await api('/pages/' + encodeURIComponent(slug));
       const p = pickObject(d, ['page', 'item']);
