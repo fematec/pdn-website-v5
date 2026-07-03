@@ -226,3 +226,8 @@ html, body{max-width:100%;overflow-x:hidden}
 
 /* CMS contentblokken */
 .cms-btn{display:inline-block;background:#ddb13d;color:#07152e;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:12px}.cms-callout{border-left:5px solid #ddb13d;background:#fff8e2;padding:16px 18px;border-radius:12px;margin:16px 0}.cms-callout p{margin:6px 0 0}.cms-columns{display:grid;gap:18px;margin:18px 0}.cms-columns-2{grid-template-columns:1fr 1fr}.cms-columns-3{grid-template-columns:1fr 1fr 1fr}.cms-columns>div{background:#f8fbff;border:1px solid #d9e3f0;border-radius:12px;padding:16px}.cms-table{width:100%;border-collapse:collapse;margin:18px 0;background:white}.cms-table th,.cms-table td{border:1px solid #d9e3f0;padding:10px;text-align:left}.cms-table th{background:#f8fbff}blockquote{border-left:5px solid #08294c;margin:18px 0;padding:12px 18px;background:#f8fbff;border-radius:12px;color:#25344d}@media(max-width:760px){.cms-columns-2,.cms-columns-3{grid-template-columns:1fr}}
+
+/* Sprint 2.4 - media uit CMS-editor */
+.cms-content figure.cms-media-figure,.cms-content figure.page-media-figure{display:block;max-width:760px;margin:24px auto;text-align:center}
+.cms-content figure.cms-media-figure img,.cms-content figure.page-media-figure img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;margin:0 auto;border-radius:16px;background:#fff}
+.cms-content figure.cms-media-figure figcaption,.cms-content figure.page-media-figure figcaption{font-size:14px;color:#65708a;margin-top:8px;text-align:center}
