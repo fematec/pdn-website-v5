@@ -189,6 +189,13 @@
   async function loadNews() {
     const targets = [document.getElementById('news-list'), document.getElementById('home-news-list')].filter(Boolean);
     if (!targets.length) return;
+
+    const newsId = new URLSearchParams(location.search).get('id');
+    if (newsId && document.getElementById('news-list')) {
+      await loadNewsDetail(newsId);
+      return;
+    }
+
     try {
       const d = await api('/news');
       const data = pickArray(d, ['news', 'posts', 'articles', 'items'])
@@ -201,6 +208,28 @@
       } catch (err) {
         targets.forEach(el => { el.innerHTML = '<article class="card"><div class="card-content"><h3>Nieuws kan nog niet worden geladen</h3></div></article>'; });
       }
+    }
+  }
+
+  async function loadNewsDetail(id) {
+    const el = document.getElementById('news-list');
+    if (!el) return;
+    el.className = 'grid one';
+    el.innerHTML = '<article class="card"><div class="card-content"><span class="badge">Laden</span><h3>Nieuwsbericht wordt geladen</h3></div></article>';
+    try {
+      const d = await api('/news/' + encodeURIComponent(id));
+      const item = pickObject(d, ['item', 'news', 'post', 'article']);
+      if (!item || String(item.status || 'published') !== 'published') throw new Error('Nieuwsbericht niet gevonden');
+
+      let media = [];
+      try {
+        const md = await api('/news/' + encodeURIComponent(id) + '/media');
+        media = pickArray(md, ['media', 'items', 'images']).filter(isGalleryImage);
+      } catch (e) {}
+
+      renderNewsDetail(el, item, media);
+    } catch (e) {
+      el.innerHTML = `<article class="card"><div class="card-content"><span class="badge">Clubnieuws</span><h3>Nieuwsbericht niet gevonden</h3><p>Het bericht bestaat niet meer of is niet gepubliceerd.</p><p><a class="btn dark" href="clubnieuws.html">Terug naar clubnieuws</a></p></div></article>`;
     }
   }
 
@@ -221,10 +250,32 @@
   function renderNewsCard(n, compact, fromCms) {
     const title = n.title || n.name || 'Nieuwsbericht';
     const image = absoluteMediaUrl(n.cover_image || n.image || n.image_url || (Array.isArray(n.images) ? n.images[0] : ''));
-    const rawText = n.summary || n.excerpt || n.body || stripHtml(n.content || '');
-    const full = fromCms && n.content ? `<div class="cms-content">${n.content}</div>` : `<p>${escapeHtml(rawText).replace(/\n/g, '<br>')}</p>`;
-    const shortText = summary(stripHtml(rawText), 160);
-    return `<article class="card news-card">${image ? `<img src="${escapeAttr(image)}" alt="${escapeAttr(title)}">` : ''}<div class="card-content"><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h3>${escapeHtml(title)}</h3>${compact ? `<p>${escapeHtml(shortText)}</p>` : full}</div></article>`;
+    const rawText = n.summary || n.excerpt || stripHtml(n.content || n.body || '');
+    const shortText = summary(stripHtml(rawText), compact ? 120 : 180);
+    const href = fromCms && n.id ? `clubnieuws.html?id=${encodeURIComponent(n.id)}` : 'clubnieuws.html';
+    return `<a class="card news-card news-link" href="${escapeAttr(href)}">` +
+      `${image ? `<img src="${escapeAttr(image)}" alt="${escapeAttr(title)}" loading="lazy">` : ''}` +
+      `<div class="card-content"><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(shortText)}</p><span class="read-more">Lees bericht</span></div></a>`;
+  }
+
+  function renderNewsDetail(el, n, media) {
+    const title = n.title || 'Nieuwsbericht';
+    const image = absoluteMediaUrl(n.cover_image || n.image || n.image_url || '');
+    const content = String(n.content || n.summary || '').trim();
+    document.title = `${title} | Clubnieuws | S.V. De Prins der Nederlanden`;
+
+    const extraPhotos = (media || []).map(m => {
+      const url = absoluteMediaUrl(m.data_url || m.url || m.image_url || m.src || (m.id ? '/media-file/' + m.id : ''));
+      const label = m.title || m.caption || m.filename || 'Foto bij nieuwsbericht';
+      if (!url) return '';
+      return `<a class="gallery-item" href="${escapeAttr(url)}" target="_blank" rel="noopener"><img src="${escapeAttr(url)}" alt="${escapeAttr(label)}" loading="lazy"><span>${escapeHtml(label)}</span></a>`;
+    }).join('');
+
+    el.innerHTML = `<article class="card news-detail-card">` +
+      `${image ? `<img class="news-detail-cover" src="${escapeAttr(image)}" alt="${escapeAttr(title)}">` : ''}` +
+      `<div class="card-content news-detail-content"><p><a href="clubnieuws.html">← Terug naar clubnieuws</a></p><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h2>${escapeHtml(title)}</h2><div class="cms-content">${content || '<p>Geen berichttekst ingevuld.</p>'}</div></div>` +
+      `${extraPhotos ? `<div class="card-content"><h3>Foto’s bij dit bericht</h3><div class="gallery-grid news-media-grid">${extraPhotos}</div></div>` : ''}` +
+    `</article>`;
   }
 
   function newsDate(n) { return n.created_at || n.published_at || n.updated_at || n.date || ''; }
@@ -240,15 +291,17 @@
   async function loadGallery() {
     const el = document.getElementById('gallery-list');
     if (!el) return;
+    const selectedAlbum = new URLSearchParams(location.search).get('album');
+
     try {
-      const d = await api('/media');
-      const data = pickArray(d, ['media', 'images', 'files', 'items'])
-        .filter(isGalleryImage);
-      renderGallery(el, data, true);
+      const [albumsData, mediaData] = await Promise.all([api('/albums'), api('/media')]);
+      const albums = pickArray(albumsData, ['albums', 'items']);
+      const media = pickArray(mediaData, ['media', 'images', 'files', 'items']).filter(isGalleryImage);
+      renderGalleryAlbums(el, albums, media, selectedAlbum);
     } catch (e) {
       try {
         const data = await fetchJson('data/gallery.json');
-        renderGallery(el, data, false);
+        renderGalleryFlat(el, data);
       } catch (err) {
         el.innerHTML = '<p>Galerij kan nog niet worden geladen.</p>';
       }
@@ -262,17 +315,60 @@
     return type.startsWith('image/') || url.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif|svg)(\?|#|$)/.test(url) || !!m.r2_key;
   }
 
-  function renderGallery(el, data, fromCms) {
-    if (!data || !data.length) {
+  function renderGalleryAlbums(el, albums, media, selectedAlbum) {
+    const items = (media || []).slice().sort((a, b) =>
+      String(b.uploaded_at || b.created_at || b.updated_at || '').localeCompare(String(a.uploaded_at || a.created_at || a.updated_at || ''))
+    );
+
+    if (!items.length) {
       el.innerHTML = '<p>Er staan nog geen foto’s in de galerij. Foto’s die je in het CMS uploadt verschijnen hier automatisch.</p>';
       return;
     }
 
-    const items = data.slice().sort((a, b) =>
+    const albumMap = new Map();
+    (albums || []).forEach(a => albumMap.set(String(a.id), { id: String(a.id), name: a.name || a.title || 'Album', description: a.description || '' }));
+    items.forEach(m => {
+      const id = String(m.album_id || 'algemeen');
+      if (!albumMap.has(id)) albumMap.set(id, { id, name: m.album_name || m.album || 'Algemeen', description: '' });
+    });
+
+    if (selectedAlbum) {
+      const album = albumMap.get(String(selectedAlbum)) || { id: selectedAlbum, name: 'Album' };
+      const albumItems = items.filter(m => String(m.album_id || 'algemeen') === String(selectedAlbum));
+      el.className = 'gallery-grid';
+      el.innerHTML = `<div class="gallery-toolbar"><a class="btn dark" href="fotogalerij.html">← Terug naar albums</a><h2>${escapeHtml(album.name)}</h2>${album.description ? `<p>${escapeHtml(album.description)}</p>` : ''}</div>` +
+        (albumItems.length ? renderGalleryFlatHtml(albumItems) : '<p>Dit album bevat nog geen foto’s.</p>');
+      return;
+    }
+
+    const albumCards = Array.from(albumMap.values()).map(album => {
+      const albumItems = items.filter(m => String(m.album_id || 'algemeen') === String(album.id));
+      if (!albumItems.length) return '';
+      const cover = albumItems.find(x => x.data_url || x.url || x.image_url || x.src) || albumItems[0];
+      const coverUrl = absoluteMediaUrl(cover.data_url || cover.url || cover.image_url || cover.src || (cover.id ? '/media-file/' + cover.id : ''));
+      return `<a class="gallery-item album-item" href="fotogalerij.html?album=${encodeURIComponent(album.id)}">` +
+        `${coverUrl ? `<img src="${escapeAttr(coverUrl)}" alt="${escapeAttr(album.name)}" loading="lazy">` : ''}` +
+        `<span>${escapeHtml(album.name)}<small>${albumItems.length} foto${albumItems.length === 1 ? '' : '’s'}</small></span>` +
+      `</a>`;
+    }).join('');
+
+    el.className = 'gallery-grid album-grid';
+    el.innerHTML = albumCards;
+  }
+
+  function renderGalleryFlat(el, data) {
+    if (!data || !data.length) {
+      el.innerHTML = '<p>Er staan nog geen foto’s in de galerij.</p>';
+      return;
+    }
+    el.innerHTML = renderGalleryFlatHtml(data);
+  }
+
+  function renderGalleryFlatHtml(data) {
+    const items = (data || []).slice().sort((a, b) =>
       String(b.uploaded_at || b.created_at || b.updated_at || '').localeCompare(String(a.uploaded_at || a.created_at || a.updated_at || ''))
     );
-
-    el.innerHTML = items.map(g => {
+    return items.map(g => {
       const url = absoluteMediaUrl(g.data_url || g.url || g.image_url || g.src || (g.id ? '/media-file/' + g.id : ''));
       const title = g.title || g.caption || g.filename || g.album_name || g.album || 'Verenigingsfoto';
       const album = g.album_name || g.album || '';
