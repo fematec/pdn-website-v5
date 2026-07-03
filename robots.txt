@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://deprinsdernederlanden.nl/sitemap.xml
