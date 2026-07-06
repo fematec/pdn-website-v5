@@ -231,3 +231,7 @@ html, body{max-width:100%;overflow-x:hidden}
 .cms-content figure.cms-media-figure,.cms-content figure.page-media-figure{display:block;max-width:760px;margin:24px auto;text-align:center}
 .cms-content figure.cms-media-figure img,.cms-content figure.page-media-figure img{display:block;max-width:100%;height:auto;max-height:520px;object-fit:contain;margin:0 auto;border-radius:16px;background:#fff}
 .cms-content figure.cms-media-figure figcaption,.cms-content figure.page-media-figure figcaption{font-size:14px;color:#65708a;margin-top:8px;text-align:center}
+
+.hp-field{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
+.form-msg{font-weight:700;margin-top:14px;color:#102044}
+button:disabled{opacity:.65;cursor:not-allowed}

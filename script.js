@@ -34,6 +34,26 @@
     throw lastError || new Error('CMS niet bereikbaar');
   }
 
+
+  async function apiPost(path, body) {
+    const bases = [CMS_API_DIRECT, CMS_API_PROXY];
+    let lastError = null;
+    for (const base of bases) {
+      try {
+        const r = await fetch(base + path, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {})
+        });
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data || data.ok === false) throw new Error((data && data.error) || 'Versturen mislukt');
+        return data;
+      } catch (err) { lastError = err; }
+    }
+    throw lastError || new Error('Versturen mislukt');
+  }
+
   async function fetchJson(path) {
     const r = await fetch(path + '?v=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return [];
@@ -584,6 +604,29 @@
     return staticMap[slug] || `pagina.html?slug=${encodeURIComponent(slug)}`;
   }
 
+
+  function initContactForm() {
+    const form = document.getElementById('contactForm');
+    if (!form) return;
+    const msg = document.getElementById('contactFormMsg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      const data = Object.fromEntries(new FormData(form).entries());
+      if (msg) msg.textContent = 'Bericht wordt verstuurd...';
+      if (btn) btn.disabled = true;
+      try {
+        await apiPost('/contact-messages', data);
+        form.reset();
+        if (msg) msg.textContent = 'Bedankt, uw bericht is verzonden.';
+      } catch (err) {
+        if (msg) msg.textContent = err.message || 'Versturen is mislukt. Probeer het later opnieuw.';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
   // V4-layout herstel: header, merknaam, navigatie en footer blijven uit de HTML/CSS.
   // Sprint 3 maakt pagina-inhoud wel dynamisch: bestaande pagina's worden vervangen door
   // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via
@@ -594,4 +637,5 @@
   loadCmsPage();
   loadNews();
   loadGallery();
+  initContactForm();
 })();
