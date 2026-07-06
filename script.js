@@ -248,7 +248,13 @@
       const lead = p.summary || p.excerpt || p.lead || '';
       setPageHero(title, lead);
       document.title = p.seo_title || `${title} | S.V. De Prins der Nederlanden`;
-      upsertMeta('description', p.seo_description || p.description || stripHtml(p.content || '').slice(0, 160));
+      applySeoMeta({
+        title: p.seo_title || title,
+        description: p.meta_description || p.seo_description || p.description || stripHtml(p.content || '').slice(0, 160),
+        image: p.og_image || firstImageFromHtml(p.content || ''),
+        url: location.href,
+        noIndex: !!p.no_index
+      });
 
       renderCmsPageContent(p, { replaceStatic: slug !== 'home' || generic, generic });
     } catch (e) {
@@ -313,10 +319,40 @@
   }
 
   function upsertMeta(name, content) {
-    if (!content) return;
+    if (content === undefined || content === null || content === '') return;
     let el = document.querySelector(`meta[name="${name}"]`);
     if (!el) { el = document.createElement('meta'); el.setAttribute('name', name); document.head.appendChild(el); }
     el.setAttribute('content', content);
+  }
+
+  function upsertPropertyMeta(property, content) {
+    if (content === undefined || content === null || content === '') return;
+    let el = document.querySelector(`meta[property="${property}"]`);
+    if (!el) { el = document.createElement('meta'); el.setAttribute('property', property); document.head.appendChild(el); }
+    el.setAttribute('content', content);
+  }
+
+  function applySeoMeta(seo) {
+    if (!seo) return;
+    const title = seo.title || document.title;
+    const description = seo.description || '';
+    const image = absoluteMediaUrl(seo.image || '');
+    upsertMeta('description', description);
+    upsertPropertyMeta('og:title', title);
+    upsertPropertyMeta('og:description', description);
+    upsertPropertyMeta('og:type', 'website');
+    upsertPropertyMeta('og:url', seo.url || location.href);
+    if (image) upsertPropertyMeta('og:image', image);
+    upsertMeta('twitter:card', image ? 'summary_large_image' : 'summary');
+    upsertMeta('twitter:title', title);
+    upsertMeta('twitter:description', description);
+    if (image) upsertMeta('twitter:image', image);
+    upsertMeta('robots', seo.noIndex ? 'noindex,nofollow' : 'index,follow');
+  }
+
+  function firstImageFromHtml(html) {
+    const m = String(html || '').match(/<img[^>]+src=["']([^"']+)["']/i);
+    return m ? m[1] : '';
   }
 
   async function loadNews() {
@@ -395,7 +431,14 @@
     const title = n.title || 'Nieuwsbericht';
     const image = absoluteMediaUrl(n.cover_image || n.image || n.image_url || '');
     const content = String(n.content || n.summary || '').trim();
-    document.title = `${title} | Clubnieuws | S.V. De Prins der Nederlanden`;
+    document.title = n.seo_title || `${title} | Clubnieuws | S.V. De Prins der Nederlanden`;
+    applySeoMeta({
+      title: n.seo_title || title,
+      description: n.meta_description || n.summary || stripHtml(content).slice(0,160),
+      image: n.og_image || image,
+      url: location.href,
+      noIndex: !!n.no_index
+    });
 
     const extraPhotos = (media || []).map(m => {
       const url = absoluteMediaUrl(m.data_url || m.url || m.image_url || m.src || (m.id ? '/media-file/' + m.id : ''));
