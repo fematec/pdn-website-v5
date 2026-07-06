@@ -137,6 +137,10 @@
         .filter(x => Number(x.active ?? x.is_active ?? 1) !== 0 && (x.area || x.location || 'main') === 'main');
       if (!items.length) return;
 
+      // Veiligheidscontrole: overschrijf de vaste v4-header alleen als het CMS-menu compleet is.
+      // Zo voorkom je dat items zoals Clubnieuws/Fotogalerij verdwijnen wanneer dynamisch menu aan staat.
+      if (!isCompleteMainMenu(items)) return;
+
       const byParent = {};
       items.forEach(x => {
         const p = x.parent_id || x.parent || '';
@@ -153,6 +157,19 @@
     } catch (e) {
       // V4 menu blijft staan.
     }
+  }
+
+
+  function isCompleteMainMenu(items) {
+    const required = ['home', 'disciplines', 'clubnieuws', 'fotogalerij', 'over-ons', 'geschiedenis', 'contact'];
+    const found = new Set();
+    for (const item of items) {
+      const href = menuHref(item);
+      const label = cleanSlug(item.label || item.title || '');
+      const slug = cleanSlug(item.page_slug || item.slug || item.url || slugFromHref(href));
+      [label, slug, cleanSlug(slugFromHref(href))].forEach(v => found.add(v));
+    }
+    return required.every(v => found.has(v));
   }
 
   function renderMenuItem(item, byParent, current) {
