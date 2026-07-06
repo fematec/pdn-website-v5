@@ -59,6 +59,52 @@
     return data && typeof data === 'object' ? data : {};
   }
 
+  async function loadHomepageSettings() {
+    if (!document.querySelector('.classic-home-hero')) return;
+    try {
+      const d = await api('/settings');
+      const s = pickObject(d, ['settings', 'site']);
+      const hero = document.querySelector('.classic-home-hero');
+      if (!hero) return;
+
+      const eyebrow = hero.querySelector('.eyebrow');
+      const title = hero.querySelector('h1');
+      const intro = hero.querySelector('.hero-inner > div p');
+      const buttons = hero.querySelectorAll('.buttons a');
+      const infoTitle = hero.querySelector('.hero-card h2');
+      const infoBlocks = hero.querySelectorAll('.quick div');
+
+      if (s.homepage_bg_image) {
+        const bg = absoluteMediaUrl(s.homepage_bg_image);
+        hero.style.background = `linear-gradient(120deg,rgba(16,31,61,.94),rgba(16,31,61,.72)),url('${bg.replace(/'/g, "%27")}') center/cover`;
+      }
+      if (eyebrow && s.homepage_eyebrow) eyebrow.textContent = s.homepage_eyebrow;
+      if (title && s.homepage_title) title.textContent = s.homepage_title;
+      if (intro && s.homepage_intro) intro.textContent = s.homepage_intro;
+      if (buttons[0]) {
+        if (s.homepage_button_1_text) buttons[0].textContent = s.homepage_button_1_text;
+        if (s.homepage_button_1_url) buttons[0].setAttribute('href', s.homepage_button_1_url);
+      }
+      if (buttons[1]) {
+        if (s.homepage_button_2_text) buttons[1].textContent = s.homepage_button_2_text;
+        if (s.homepage_button_2_url) buttons[1].setAttribute('href', s.homepage_button_2_url);
+      }
+      if (infoTitle && s.homepage_info_title) infoTitle.textContent = s.homepage_info_title;
+      const info = [
+        [s.homepage_info_1_title, s.homepage_info_1_text],
+        [s.homepage_info_2_title, s.homepage_info_2_text],
+        [s.homepage_info_3_title, s.homepage_info_3_text]
+      ];
+      infoBlocks.forEach((block, i) => {
+        const pair = info[i] || [];
+        if (!pair[0] && !pair[1]) return;
+        block.innerHTML = `<strong>${escapeHtml(pair[0] || '')}</strong><br>${escapeHtml(pair[1] || '').replace(/\n/g, '<br>')}`;
+      });
+    } catch (e) {
+      // Homepage valt terug op de vaste v4-teksten.
+    }
+  }
+
   async function loadSettings() {
     try {
       const d = await api('/settings');
@@ -463,6 +509,7 @@
   // pagina.html?slug=... .
   // loadSettings();
   // loadMenu();
+  loadHomepageSettings();
   loadCmsPage();
   loadNews();
   loadGallery();
