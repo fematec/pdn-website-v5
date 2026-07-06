@@ -127,6 +127,11 @@
   async function loadMenu() {
     if (!nav) return;
     try {
+      const settingsData = await api('/settings');
+      const settings = pickObject(settingsData, ['settings', 'site']);
+      const enabled = String(settings.dynamic_menu_enabled || '0') === '1' || String(settings.dynamic_menu_enabled || '').toLowerCase() === 'true';
+      if (!enabled) return; // Veilig: vaste v4-header blijft zichtbaar tot dit expliciet in CMS is ingeschakeld.
+
       const d = await api('/menus');
       const items = pickArray(d, ['menus', 'menu', 'items'])
         .filter(x => Number(x.active ?? x.is_active ?? 1) !== 0 && (x.area || x.location || 'main') === 'main');
@@ -163,12 +168,28 @@
   }
 
   function menuHref(item) {
-    if ((item.type || 'page') === 'external' && item.url) return item.url;
+    const type = item.type || 'page';
+    if ((type === 'external' || type === 'url') && item.url) return item.url;
     if (item.href) return item.href;
     if (item.url && /^https?:\/\//i.test(item.url)) return item.url;
-    const slug = item.page_slug || item.slug || item.url || '';
+
+    const slug = cleanSlug(item.page_slug || item.slug || item.url || '');
     if (!slug || slug === 'home' || slug === 'index') return 'index.html';
-    return String(slug).endsWith('.html') ? slug : `${slug}.html`;
+
+    const fixedPages = {
+      'clubnieuws': 'clubnieuws.html',
+      'fotogalerij': 'fotogalerij.html',
+      'over-ons': 'over-ons.html',
+      'disciplines': 'disciplines.html',
+      'geschiedenis': 'geschiedenis.html',
+      'contact': 'contact.html',
+      'boogschieten': 'boogschieten.html',
+      'luchtdruk': 'luchtdruk.html',
+      'vuurwapen-disciplines': 'vuurwapen-disciplines.html'
+    };
+    if (fixedPages[slug]) return fixedPages[slug];
+    if (String(item.url || '').endsWith('.html')) return item.url;
+    return `pagina.html?slug=${encodeURIComponent(slug)}`;
   }
 
   function slugFromHref(href) { return String(href || '').replace(/^.*\//, '').replace(/\.html$/, '') || 'home'; }
@@ -508,7 +529,7 @@
   // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via
   // pagina.html?slug=... .
   // loadSettings();
-  // loadMenu();
+  loadMenu();
   loadHomepageSettings();
   loadCmsPage();
   loadNews();
