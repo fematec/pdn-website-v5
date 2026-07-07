@@ -1,0 +1,19 @@
+# PDN website v5 - veilige router rewrites
+# Zorgt dat nette URLs en detailpagina's altijd door de frontend worden afgehandeld.
+
+/agenda/*       /agenda.html       200
+/nieuws/*       /clubnieuws.html   200
+
+/agenda         /agenda.html       200
+/clubnieuws     /clubnieuws.html   200
+/fotogalerij    /fotogalerij.html  200
+/over-ons       /over-ons.html     200
+/disciplines    /disciplines.html  200
+/geschiedenis   /geschiedenis.html 200
+/contact        /contact.html      200
+/boogschieten   /boogschieten.html 200
+/luchtdruk      /luchtdruk.html    200
+/vuurwapen-disciplines /vuurwapen-disciplines.html 200
+
+# Nieuwe CMS-pagina's blijven via pagina.html werken wanneer er geen vast bestand bestaat.
+/*              /pagina.html       200
