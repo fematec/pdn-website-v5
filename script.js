@@ -150,6 +150,47 @@
         if (!pair[0] && !pair[1]) return;
         block.innerHTML = `<strong>${escapeHtml(pair[0] || '')}</strong><br>${escapeHtml(pair[1] || '').replace(/\n/g, '<br>')}`;
       });
+
+      if (whySection) {
+        const whyTitle = whySection.querySelector('.section-title h2');
+        const whyIntro = whySection.querySelector('.section-title .lead');
+        const whyCards = whySection.querySelectorAll('.card');
+        if (whyTitle && s.homepage_why_title) whyTitle.textContent = s.homepage_why_title;
+        if (whyIntro && s.homepage_why_intro) whyIntro.textContent = s.homepage_why_intro;
+        const whyData = [
+          [s.homepage_why_1_badge, s.homepage_why_1_title, s.homepage_why_1_text],
+          [s.homepage_why_2_badge, s.homepage_why_2_title, s.homepage_why_2_text],
+          [s.homepage_why_3_badge, s.homepage_why_3_title, s.homepage_why_3_text]
+        ];
+        whyCards.forEach((card, i) => {
+          const d = whyData[i] || [];
+          const badge = card.querySelector('.badge');
+          const h3 = card.querySelector('h3');
+          const p = card.querySelector('p:not(.arrow)');
+          if (badge && d[0]) badge.textContent = d[0];
+          if (h3 && d[1]) h3.textContent = d[1];
+          if (p && d[2]) p.textContent = d[2];
+        });
+      }
+
+      if (contactSection) {
+        const contactTitle = contactSection.querySelector('.section-title h2');
+        const contactIntro = contactSection.querySelector('.section-title .lead');
+        const contactButton = contactSection.querySelector('.btn');
+        const boxTitle = contactSection.querySelector('.info-box h3');
+        const list = contactSection.querySelector('.info-box ul');
+        if (contactTitle && s.homepage_contact_title) contactTitle.textContent = s.homepage_contact_title;
+        if (contactIntro && s.homepage_contact_intro) contactIntro.textContent = s.homepage_contact_intro;
+        if (contactButton) {
+          if (s.homepage_contact_button_text) contactButton.textContent = s.homepage_contact_button_text;
+          if (s.homepage_contact_button_url) contactButton.setAttribute('href', s.homepage_contact_button_url);
+        }
+        if (boxTitle && s.homepage_contact_box_title) boxTitle.textContent = s.homepage_contact_box_title;
+        if (list && s.homepage_contact_points) {
+          const points = String(s.homepage_contact_points).split(/\n+/).map(x => x.trim()).filter(Boolean);
+          if (points.length) list.innerHTML = points.map(x => `<li>${escapeHtml(x)}</li>`).join('');
+        }
+      }
     } catch (e) {
       // Homepage valt terug op de vaste v4-teksten.
     }
