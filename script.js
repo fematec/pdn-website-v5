@@ -284,29 +284,35 @@
     const slug = cleanSlug(item.page_slug || item.slug || item.url || '');
     if (!slug || slug === 'home' || slug === 'index') return 'index.html';
 
-    const fixedPages = {
-      'clubnieuws': 'clubnieuws.html',
-      'fotogalerij': 'fotogalerij.html',
-      'over-ons': 'over-ons.html',
-      'disciplines': 'disciplines.html',
-      'geschiedenis': 'geschiedenis.html',
-      'contact': 'contact.html',
-      'boogschieten': 'boogschieten.html',
-      'luchtdruk': 'luchtdruk.html',
-      'vuurwapen-disciplines': 'vuurwapen-disciplines.html'
+    const prettyPages = {
+      'clubnieuws': '/clubnieuws',
+      'fotogalerij': '/fotogalerij',
+      'over-ons': '/over-ons',
+      'disciplines': '/disciplines',
+      'geschiedenis': '/geschiedenis',
+      'contact': '/contact',
+      'boogschieten': '/boogschieten',
+      'luchtdruk': '/luchtdruk',
+      'vuurwapen-disciplines': '/vuurwapen-disciplines'
     };
-    if (fixedPages[slug]) return fixedPages[slug];
+    if (prettyPages[slug]) return prettyPages[slug];
     if (String(item.url || '').endsWith('.html')) return item.url;
-    return `pagina.html?slug=${encodeURIComponent(slug)}`;
+    return `/${encodeURIComponent(slug)}`;
   }
 
-  function slugFromHref(href) { return String(href || '').replace(/^.*\//, '').replace(/\.html$/, '') || 'home'; }
+  function slugFromHref(href) {
+    const h = String(href || '').split('?')[0].replace(/\/$/, '');
+    return h.replace(/^.*\//, '').replace(/\.html$/, '') || 'home';
+  }
   function currentSlug() {
     const querySlug = new URLSearchParams(location.search).get('slug');
     if (querySlug) return cleanSlug(querySlug);
-    const f = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '');
+    const path = location.pathname.replace(/\/+$/, '') || '/';
+    if (path === '/' || path.endsWith('/index.html')) return 'home';
+    if (path.startsWith('/nieuws/')) return 'clubnieuws';
+    const f = (path.split('/').pop() || 'index.html').replace(/\.html$/, '');
     if (f === 'pagina' || f === 'page') return cleanSlug(querySlug || '');
-    return f === 'index' || f === '' ? 'home' : cleanSlug(f);
+    return cleanSlug(f);
   }
 
   function cleanSlug(value) {
@@ -318,7 +324,12 @@
   }
 
   function isGenericCmsPage() {
-    return ['pagina.html', 'page.html'].includes(location.pathname.split('/').pop() || '');
+    const path = location.pathname.replace(/\/+$/, '') || '/';
+    const file = path.split('/').pop() || '';
+    if (['pagina.html', 'page.html'].includes(file)) return true;
+    if (path === '/' || path.startsWith('/api') || path.startsWith('/nieuws/')) return false;
+    // Extensionless URL's zoals /bestuur of /lid-worden worden als CMS-pagina behandeld.
+    return !file.includes('.') && !['clubnieuws','fotogalerij','boogschieten','luchtdruk','vuurwapen-disciplines'].includes(cleanSlug(file));
   }
 
   async function loadCmsPage() {
@@ -450,7 +461,7 @@
     const targets = [document.getElementById('news-list'), document.getElementById('home-news-list')].filter(Boolean);
     if (!targets.length) return;
 
-    const newsId = new URLSearchParams(location.search).get('id');
+    const newsId = new URLSearchParams(location.search).get('id') || newsIdFromPath();
     if (newsId && document.getElementById('news-list')) {
       await loadNewsDetail(newsId);
       return;
@@ -471,6 +482,11 @@
     }
   }
 
+  function newsIdFromPath() {
+    const m = location.pathname.match(/^\/nieuws\/([^\/]+)\/?$/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
   async function loadNewsDetail(id) {
     const el = document.getElementById('news-list');
     if (!el) return;
@@ -489,7 +505,7 @@
 
       renderNewsDetail(el, item, media);
     } catch (e) {
-      el.innerHTML = `<article class="card"><div class="card-content"><span class="badge">Clubnieuws</span><h3>Nieuwsbericht niet gevonden</h3><p>Het bericht bestaat niet meer of is niet gepubliceerd.</p><p><a class="btn dark" href="clubnieuws.html">Terug naar clubnieuws</a></p></div></article>`;
+      el.innerHTML = `<article class="card"><div class="card-content"><span class="badge">Clubnieuws</span><h3>Nieuwsbericht niet gevonden</h3><p>Het bericht bestaat niet meer of is niet gepubliceerd.</p><p><a class="btn dark" href="/clubnieuws">Terug naar clubnieuws</a></p></div></article>`;
     }
   }
 
@@ -512,7 +528,7 @@
     const image = absoluteMediaUrl(n.cover_image || n.image || n.image_url || (Array.isArray(n.images) ? n.images[0] : ''));
     const rawText = n.summary || n.excerpt || stripHtml(n.content || n.body || '');
     const shortText = summary(stripHtml(rawText), compact ? 120 : 180);
-    const href = fromCms && n.id ? `clubnieuws.html?id=${encodeURIComponent(n.id)}` : 'clubnieuws.html';
+    const href = fromCms && n.id ? `/nieuws/${encodeURIComponent(newsSlug(n))}` : '/clubnieuws';
     return `<a class="card news-card news-link" href="${escapeAttr(href)}">` +
       `${image ? `<img src="${escapeAttr(image)}" alt="${escapeAttr(title)}" loading="lazy">` : ''}` +
       `<div class="card-content"><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h3>${escapeHtml(title)}</h3><p>${escapeHtml(shortText)}</p><span class="read-more">Lees bericht</span></div></a>`;
@@ -540,9 +556,15 @@
 
     el.innerHTML = `<article class="card news-detail-card">` +
       `${image ? `<img class="news-detail-cover" src="${escapeAttr(image)}" alt="${escapeAttr(title)}">` : ''}` +
-      `<div class="card-content news-detail-content"><p><a href="clubnieuws.html">← Terug naar clubnieuws</a></p><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h2>${escapeHtml(title)}</h2><div class="cms-content">${content || '<p>Geen berichttekst ingevuld.</p>'}</div></div>` +
+      `<div class="card-content news-detail-content"><p><a href="/clubnieuws">← Terug naar clubnieuws</a></p><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h2>${escapeHtml(title)}</h2><div class="cms-content">${content || '<p>Geen berichttekst ingevuld.</p>'}</div></div>` +
       `${extraPhotos ? `<div class="card-content"><h3>Foto’s bij dit bericht</h3><div class="gallery-grid news-media-grid">${extraPhotos}</div></div>` : ''}` +
     `</article>`;
+  }
+
+  function newsSlug(n) {
+    // Veilige fase: gebruik het ID zodat bestaande API-routes blijven werken.
+    // Later kunnen we hier titel-slugs met redirects van maken.
+    return n.id || cleanSlug(n.title || 'nieuws');
   }
 
   function newsDate(n) { return n.created_at || n.published_at || n.updated_at || n.date || ''; }
@@ -691,14 +713,8 @@
 
   function publicPageUrl(slug) {
     slug = cleanSlug(slug);
-    const staticMap = {
-      home: 'index.html',
-      'over-ons': 'over-ons.html',
-      geschiedenis: 'geschiedenis.html',
-      disciplines: 'disciplines.html',
-      contact: 'contact.html'
-    };
-    return staticMap[slug] || `pagina.html?slug=${encodeURIComponent(slug)}`;
+    if (!slug || slug === 'home') return '/';
+    return `/${encodeURIComponent(slug)}`;
   }
 
 
@@ -726,8 +742,7 @@
 
   // V4-layout herstel: header, merknaam, navigatie en footer blijven uit de HTML/CSS.
   // Sprint 3 maakt pagina-inhoud wel dynamisch: bestaande pagina's worden vervangen door
-  // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via
-  // pagina.html?slug=... .
+  // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via nette URL's zoals /bestuur, met oude URL's als fallback.
   // loadSettings();
   loadMenu();
   loadHomepageSettings();
