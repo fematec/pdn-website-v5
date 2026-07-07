@@ -79,13 +79,37 @@
     return data && typeof data === 'object' ? data : {};
   }
 
+  function truthySetting(value, fallback = true) {
+    if (value === undefined || value === null || value === '') return !!fallback;
+    const v = String(value).toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes' || v === 'aan';
+  }
+
+  function findHomeSectionByTitle(text) {
+    const sections = Array.from(document.querySelectorAll('section.section, section.section.alt'));
+    const wanted = String(text || '').toLowerCase();
+    return sections.find(sec => String(sec.querySelector('h2')?.textContent || '').toLowerCase().includes(wanted));
+  }
+
   async function loadHomepageSettings() {
     if (!document.querySelector('.classic-home-hero')) return;
     try {
       const d = await api('/settings');
       const s = pickObject(d, ['settings', 'site']);
+      window.PDN_HOME_SETTINGS = s;
+      window.PDN_HOME_NEWS_COUNT = Math.max(1, Math.min(9, Number(s.homepage_news_count || 3)));
       const hero = document.querySelector('.classic-home-hero');
       if (!hero) return;
+
+      hero.style.display = truthySetting(s.homepage_show_hero, true) ? '' : 'none';
+      const disciplinesSection = findHomeSectionByTitle('ontdek onze disciplines');
+      const newsSection = findHomeSectionByTitle('laatste clubnieuws');
+      const whySection = findHomeSectionByTitle('waarom lid worden');
+      const contactSection = findHomeSectionByTitle('kom langs');
+      if (disciplinesSection) disciplinesSection.style.display = truthySetting(s.homepage_show_disciplines, true) ? '' : 'none';
+      if (newsSection) newsSection.style.display = truthySetting(s.homepage_show_news, true) ? '' : 'none';
+      if (whySection) whySection.style.display = truthySetting(s.homepage_show_why, true) ? '' : 'none';
+      if (contactSection) contactSection.style.display = truthySetting(s.homepage_show_contact, true) ? '' : 'none';
 
       const eyebrow = hero.querySelector('.eyebrow');
       const title = hero.querySelector('h1');
@@ -432,7 +456,7 @@
     };
     targets.forEach(el => {
       const compact = el.id === 'home-news-list';
-      el.innerHTML = make(sorted.slice(0, compact ? 3 : 999), compact);
+      el.innerHTML = make(sorted.slice(0, compact ? (window.PDN_HOME_NEWS_COUNT || 3) : 999), compact);
     });
   }
 
