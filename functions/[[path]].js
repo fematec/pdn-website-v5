@@ -8,6 +8,7 @@ const STATIC_ROUTES = {
   '/disciplines': '/disciplines.html',
   '/geschiedenis': '/geschiedenis.html',
   '/contact': '/contact.html',
+  '/agenda': '/agenda.html',
   '/boogschieten': '/boogschieten.html',
   '/luchtdruk': '/luchtdruk.html',
   '/vuurwapen-disciplines': '/vuurwapen-disciplines.html'
@@ -21,6 +22,7 @@ const HTML_REDIRECTS = {
   '/disciplines.html': '/disciplines',
   '/geschiedenis.html': '/geschiedenis',
   '/contact.html': '/contact',
+  '/agenda.html': '/agenda',
   '/boogschieten.html': '/boogschieten',
   '/luchtdruk.html': '/luchtdruk',
   '/vuurwapen-disciplines.html': '/vuurwapen-disciplines'
@@ -59,6 +61,11 @@ export async function onRequest(context) {
   // Nette nieuwsdetail-URL: /nieuws/<id> -> clubnieuws.html; JS leest het ID uit het pad.
   if (path.startsWith('/nieuws/')) {
     return serveAsset(context, '/clubnieuws.html');
+  }
+
+  // Nette agenda detail-URL: /agenda/<id> -> agenda.html; JS leest het ID uit het pad.
+  if (path.startsWith('/agenda/')) {
+    return serveAsset(context, '/agenda.html');
   }
 
   // Nette vaste URL's: /over-ons, /clubnieuws, /fotogalerij enz.
