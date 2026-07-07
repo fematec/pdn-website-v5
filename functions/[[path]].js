@@ -40,7 +40,9 @@ export async function onRequest(context) {
   if (path === '/pagina.html') {
     const slug = cleanSlug(url.searchParams.get('slug') || '');
     if (slug && slug !== 'home') return redirectTo(url, '/' + encodeURIComponent(slug));
-    return redirectTo(url, '/');
+    // Geen slug: toon de pagina-template zelf in plaats van door te redirecten.
+    // Dit voorkomt redirect-loops wanneer Cloudflare /pagina naar pagina.html herschrijft.
+    return context.env.ASSETS.fetch(context.request);
   }
 
   // Oude nieuwsdetail URL: /clubnieuws.html?id=... -> /nieuws/...
@@ -71,6 +73,11 @@ export async function onRequest(context) {
   // Nette vaste URL's: /over-ons, /clubnieuws, /fotogalerij enz.
   if (STATIC_ROUTES[path]) {
     return serveAsset(context, STATIC_ROUTES[path]);
+  }
+
+  // Veiligheid: /pagina zonder slug toont pagina.html, maar redirect niet door.
+  if (path === '/pagina') {
+    return serveAsset(context, '/pagina.html');
   }
 
   // Nieuwe CMS-pagina's: /bestuur -> pagina.html; JS haalt slug uit location.pathname.

@@ -1,5 +1,5 @@
-# PDN website v5 - veilige router rewrites
-# Zorgt dat nette URLs en detailpagina's altijd door de frontend worden afgehandeld.
+# PDN website v5 - veilige router rewrites zonder wildcard-loop
+# Let op: geen algemene /* rewrite gebruiken. Die veroorzaakte een redirect-loop op /pagina.
 
 /agenda/*       /agenda.html       200
 /nieuws/*       /clubnieuws.html   200
@@ -14,6 +14,3 @@
 /boogschieten   /boogschieten.html 200
 /luchtdruk      /luchtdruk.html    200
 /vuurwapen-disciplines /vuurwapen-disciplines.html 200
-
-# Nieuwe CMS-pagina's blijven via pagina.html werken wanneer er geen vast bestand bestaat.
-/*              /pagina.html       200
