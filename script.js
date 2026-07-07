@@ -291,6 +291,7 @@
       'disciplines': '/disciplines',
       'geschiedenis': '/geschiedenis',
       'contact': '/contact',
+      'agenda': '/agenda',
       'boogschieten': '/boogschieten',
       'luchtdruk': '/luchtdruk',
       'vuurwapen-disciplines': '/vuurwapen-disciplines'
@@ -332,7 +333,7 @@
     // Belangrijk: vaste v4-pagina's mogen nooit als generieke CMS-pagina worden behandeld.
     // Anders kan een concept/lege CMS-pagina de werkende statische layout vervangen door 404.
     const fixedRoutes = [
-      'home','index','clubnieuws','fotogalerij','over-ons','disciplines','geschiedenis','contact',
+      'home','index','clubnieuws','fotogalerij','agenda','over-ons','disciplines','geschiedenis','contact',
       'boogschieten','luchtdruk','vuurwapen-disciplines'
     ];
     const slug = cleanSlug(file);
@@ -465,7 +466,8 @@
         '/over-ons.html': '/over-ons',
         '/disciplines.html': '/disciplines',
         '/geschiedenis.html': '/geschiedenis',
-        '/contact.html': '/contact'
+        '/contact.html': '/contact',
+        '/agenda.html': '/agenda'
       };
       if (p === '/pagina.html') {
         const slug = cleanSlug(u.searchParams.get('slug') || '');
@@ -770,6 +772,58 @@
   }
 
 
+
+  function eventDateLabel(e) {
+    const start = formatDate(e.start_date || e.date || '');
+    const end = e.end_date && e.end_date !== e.start_date ? ' t/m ' + formatDate(e.end_date) : '';
+    const time = e.start_time ? ' · ' + e.start_time + (e.end_time ? ' - ' + e.end_time : '') : '';
+    return (start || 'Datum volgt') + end + time;
+  }
+  function eventIsPast(e) {
+    const d = e.end_date || e.start_date;
+    if (!d) return false;
+    return new Date(d + 'T23:59:59').getTime() < Date.now() - 86400000;
+  }
+  function eventIdFromPath() {
+    const p = location.pathname.replace(/\/+$/, '');
+    const m = p.match(/\/agenda\/([^/]+)$/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  async function loadEvents() {
+    const el = document.getElementById('events-list');
+    if (!el) return;
+    const id = new URLSearchParams(location.search).get('id') || eventIdFromPath();
+    if (id) return loadEventDetail(id);
+    try {
+      const d = await api('/events?published=1');
+      const items = pickArray(d, ['events','items']).slice();
+      const upcoming = items.filter(e => !eventIsPast(e)).sort((a,b)=>String((a.start_date||'')+(a.start_time||'')).localeCompare(String((b.start_date||'')+(b.start_time||''))));
+      const past = items.filter(e => eventIsPast(e)).sort((a,b)=>String((b.start_date||'')+(b.start_time||'')).localeCompare(String((a.start_date||'')+(a.start_time||''))));
+      el.innerHTML = `<div class="agenda-section"><h2>Komende activiteiten</h2>${upcoming.length ? upcoming.map(eventCard).join('') : '<p class="lead">Er staan nog geen komende activiteiten in de agenda.</p>'}</div>` +
+        (past.length ? `<div class="agenda-section"><h2>Afgelopen activiteiten</h2>${past.slice(0,6).map(eventCard).join('')}</div>` : '');
+    } catch (err) {
+      el.innerHTML = `<article class="card"><div class="card-content"><h3>Agenda kon niet worden geladen</h3><p>Probeer het later opnieuw.</p></div></article>`;
+    }
+  }
+  function eventCard(e) {
+    const href = e.id ? `/agenda/${encodeURIComponent(e.id)}` : '/agenda';
+    const img = e.cover_image ? `<img src="${escapeAttr(e.cover_image)}" alt="${escapeAttr(e.title||'Agenda')}" loading="lazy">` : '';
+    return `<a class="card event-card" href="${escapeAttr(href)}">${img}<div class="card-content"><span class="badge">${escapeHtml(eventDateLabel(e))}</span><h3>${escapeHtml(e.title||'Evenement')}</h3><p>${escapeHtml(e.summary||e.location||'')}</p>${e.location?`<p><strong>Locatie:</strong> ${escapeHtml(e.location)}</p>`:''}<span class="read-more">Bekijk activiteit</span></div></a>`;
+  }
+  async function loadEventDetail(id) {
+    const el = document.getElementById('events-list');
+    if (!el) return;
+    try {
+      const d = await api('/events/' + encodeURIComponent(id));
+      const e = pickObject(d, ['item','event']);
+      if (!e || e.status !== 'published') throw new Error('Niet gevonden');
+      const content = e.content || `<p>${escapeHtml(e.summary||'')}</p>`;
+      el.innerHTML = `<article class="card news-detail-card event-detail-card">${e.cover_image?`<img class="news-detail-cover" src="${escapeAttr(e.cover_image)}" alt="${escapeAttr(e.title||'Agenda')}">`:''}<div class="card-content news-detail-content"><p><a href="/agenda">← Terug naar agenda</a></p><span class="badge">${escapeHtml(eventDateLabel(e))}</span><h2>${escapeHtml(e.title||'Evenement')}</h2>${e.location?`<p><strong>Locatie:</strong> ${escapeHtml(e.location)}</p>`:''}${e.contact_person?`<p><strong>Contactpersoon:</strong> ${escapeHtml(e.contact_person)}</p>`:''}<div class="cms-content">${content}</div>${e.signup_enabled?`<div class="notice"><h3>Aanmelden</h3><p>Voor deze activiteit is aanmelden mogelijk. Neem contact op met de vereniging.</p>${e.max_participants?`<p>Maximaal aantal deelnemers: ${Number(e.max_participants)}</p>`:''}</div>`:''}</div></article>`;
+    } catch (err) {
+      el.innerHTML = `<article class="card"><div class="card-content"><h2>Activiteit niet gevonden</h2><p>Deze activiteit bestaat niet of is nog niet gepubliceerd.</p><p><a class="btn dark" href="/agenda">Terug naar agenda</a></p></div></article>`;
+    }
+  }
+
   function initContactForm() {
     const form = document.getElementById('contactForm');
     if (!form) return;
@@ -802,5 +856,6 @@
   loadNews();
   loadHomeGallery();
   loadGallery();
+  loadEvents();
   initContactForm();
 })();

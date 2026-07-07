@@ -235,3 +235,7 @@ html, body{max-width:100%;overflow-x:hidden}
 .hp-field{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
 .form-msg{font-weight:700;margin-top:14px;color:#102044}
 button:disabled{opacity:.65;cursor:not-allowed}
+
+
+/* Sprint 5.1 - Agenda */
+.agenda-list{display:grid;gap:24px}.agenda-section{display:grid;gap:18px}.agenda-section h2{margin:0 0 4px}.event-card{display:grid;grid-template-columns:220px 1fr;text-decoration:none;color:inherit;overflow:hidden}.event-card img{width:100%;height:100%;min-height:160px;object-fit:cover}.event-card .read-more{font-weight:700;color:var(--navy)}.event-detail-card .notice{margin-top:20px}@media(max-width:760px){.event-card{grid-template-columns:1fr}.event-card img{height:190px}}
