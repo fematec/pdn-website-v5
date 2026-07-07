@@ -446,16 +446,56 @@
     el.setAttribute('content', content);
   }
 
+  function upsertCanonical(href) {
+    if (!href) return;
+    let el = document.querySelector('link[rel="canonical"]');
+    if (!el) { el = document.createElement('link'); el.setAttribute('rel', 'canonical'); document.head.appendChild(el); }
+    el.setAttribute('href', href);
+  }
+
+  function cleanCanonicalUrl(url) {
+    try {
+      const u = new URL(url || location.href, location.origin);
+      u.hash = '';
+      const p = u.pathname.replace(/\/+$/, '') || '/';
+      const fixed = {
+        '/index.html': '/',
+        '/clubnieuws.html': '/clubnieuws',
+        '/fotogalerij.html': '/fotogalerij',
+        '/over-ons.html': '/over-ons',
+        '/disciplines.html': '/disciplines',
+        '/geschiedenis.html': '/geschiedenis',
+        '/contact.html': '/contact'
+      };
+      if (p === '/pagina.html') {
+        const slug = cleanSlug(u.searchParams.get('slug') || '');
+        u.pathname = slug && slug !== 'home' ? '/' + slug : '/';
+        u.search = '';
+      } else if (p === '/clubnieuws.html' && u.searchParams.get('id')) {
+        u.pathname = '/nieuws/' + encodeURIComponent(u.searchParams.get('id'));
+        u.search = '';
+      } else if (fixed[p]) {
+        u.pathname = fixed[p];
+        u.search = '';
+      }
+      return u.toString();
+    } catch {
+      return location.href;
+    }
+  }
+
   function applySeoMeta(seo) {
     if (!seo) return;
     const title = seo.title || document.title;
     const description = seo.description || '';
     const image = absoluteMediaUrl(seo.image || '');
+    const canonical = cleanCanonicalUrl(seo.url || location.href);
     upsertMeta('description', description);
     upsertPropertyMeta('og:title', title);
     upsertPropertyMeta('og:description', description);
     upsertPropertyMeta('og:type', 'website');
-    upsertPropertyMeta('og:url', seo.url || location.href);
+    upsertPropertyMeta('og:url', canonical);
+    upsertCanonical(canonical);
     if (image) upsertPropertyMeta('og:image', image);
     upsertMeta('twitter:card', image ? 'summary_large_image' : 'summary');
     upsertMeta('twitter:title', title);
