@@ -328,8 +328,18 @@
     const file = path.split('/').pop() || '';
     if (['pagina.html', 'page.html'].includes(file)) return true;
     if (path === '/' || path.startsWith('/api') || path.startsWith('/nieuws/')) return false;
+
+    // Belangrijk: vaste v4-pagina's mogen nooit als generieke CMS-pagina worden behandeld.
+    // Anders kan een concept/lege CMS-pagina de werkende statische layout vervangen door 404.
+    const fixedRoutes = [
+      'home','index','clubnieuws','fotogalerij','over-ons','disciplines','geschiedenis','contact',
+      'boogschieten','luchtdruk','vuurwapen-disciplines'
+    ];
+    const slug = cleanSlug(file);
+    if (fixedRoutes.includes(slug)) return false;
+
     // Extensionless URL's zoals /bestuur of /lid-worden worden als CMS-pagina behandeld.
-    return !file.includes('.') && !['clubnieuws','fotogalerij','boogschieten','luchtdruk','vuurwapen-disciplines'].includes(cleanSlug(file));
+    return !file.includes('.');
   }
 
   async function loadCmsPage() {
@@ -342,6 +352,8 @@
       const d = await api('/pages/' + encodeURIComponent(slug));
       const p = pickObject(d, ['page', 'item']);
       if (!p || p.status === 'concept' || p.published === false) {
+        // Alleen nieuwe/generieke CMS-routes krijgen een 404.
+        // Vaste v4-pagina's zoals /disciplines en /geschiedenis blijven gewoon hun originele inhoud tonen.
         if (generic) renderCms404(slug);
         return;
       }
