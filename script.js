@@ -98,6 +98,10 @@
       const s = pickObject(d, ['settings', 'site']);
       window.PDN_HOME_SETTINGS = s;
       window.PDN_HOME_NEWS_COUNT = Math.max(1, Math.min(9, Number(s.homepage_news_count || 3)));
+      window.PDN_HOME_GALLERY_COUNT = Math.max(1, Math.min(12, Number(s.homepage_gallery_count || 6)));
+      window.PDN_HOME_GALLERY_ALBUM = s.homepage_gallery_album_id || '';
+      window.PDN_HOME_GALLERY_TITLE = s.homepage_gallery_title || 'Foto’s van de vereniging';
+      window.PDN_HOME_GALLERY_INTRO = s.homepage_gallery_intro || 'Een korte impressie uit de mediabibliotheek van de vereniging.';
       const hero = document.querySelector('.classic-home-hero');
       if (!hero) return;
 
@@ -106,8 +110,10 @@
       const newsSection = findHomeSectionByTitle('laatste clubnieuws');
       const whySection = findHomeSectionByTitle('waarom lid worden');
       const contactSection = findHomeSectionByTitle('kom langs');
+      const gallerySection = document.querySelector('[data-home-gallery-section]');
       if (disciplinesSection) disciplinesSection.style.display = truthySetting(s.homepage_show_disciplines, true) ? '' : 'none';
       if (newsSection) newsSection.style.display = truthySetting(s.homepage_show_news, true) ? '' : 'none';
+      if (gallerySection) gallerySection.style.display = truthySetting(s.homepage_show_gallery, true) ? '' : 'none';
       if (whySection) whySection.style.display = truthySetting(s.homepage_show_why, true) ? '' : 'none';
       if (contactSection) contactSection.style.display = truthySetting(s.homepage_show_contact, true) ? '' : 'none';
 
@@ -508,6 +514,32 @@
     return url;
   }
 
+
+  async function loadHomeGallery() {
+    const el = document.getElementById('home-gallery-list');
+    if (!el) return;
+    const section = document.querySelector('[data-home-gallery-section]');
+    try {
+      const d = await api('/media');
+      let media = pickArray(d, ['media', 'images', 'files', 'items']).filter(isGalleryImage);
+      const wantedAlbum = window.PDN_HOME_GALLERY_ALBUM || '';
+      if (wantedAlbum) media = media.filter(m => String(m.album_id || 'algemeen') === String(wantedAlbum));
+      const count = window.PDN_HOME_GALLERY_COUNT || 6;
+      const title = window.PDN_HOME_GALLERY_TITLE || 'Foto’s van de vereniging';
+      const intro = window.PDN_HOME_GALLERY_INTRO || 'Een korte impressie uit de mediabibliotheek van de vereniging.';
+      if (section) {
+        const h2 = section.querySelector('.section-title h2');
+        const lead = section.querySelector('.section-title .lead');
+        if (h2) h2.textContent = title;
+        if (lead) lead.textContent = intro;
+      }
+      media = media.slice().sort((a,b)=>String(b.uploaded_at||b.created_at||b.updated_at||'').localeCompare(String(a.uploaded_at||a.created_at||a.updated_at||''))).slice(0, count);
+      el.innerHTML = media.length ? renderGalleryFlatHtml(media) : '<p>Er zijn nog geen foto’s voor dit homepageblok.</p>';
+    } catch (e) {
+      el.innerHTML = '<p>Foto’s kunnen nog niet worden geladen.</p>';
+    }
+  }
+
   async function loadGallery() {
     const el = document.getElementById('gallery-list');
     if (!el) return;
@@ -660,6 +692,7 @@
   loadHomepageSettings();
   loadCmsPage();
   loadNews();
+  loadHomeGallery();
   loadGallery();
   initContactForm();
 })();
