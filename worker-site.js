@@ -1,8 +1,9 @@
 // PDN website v5 Worker router
-// Zorgt dat nette URL's zoals /agenda/<id> en /nieuws/<id> altijd
-// naar de juiste HTML-template gaan, zonder redirect-loops.
+// Sprint 5.2H: router-herstel zonder redirect-loops.
+// Belangrijk: interne asset fetches krijgen een header waardoor ze nooit opnieuw routeren.
 
 const API_ORIGIN = 'https://pdn-api.info-fematec.workers.dev';
+const INTERNAL_ASSET_HEADER = 'x-pdn-internal-asset-fetch';
 
 const STATIC_ROUTES = {
   '/clubnieuws': '/clubnieuws.html',
@@ -36,15 +37,26 @@ export default {
     const url = new URL(request.url);
     const path = normalizePath(url.pathname);
 
+    // Interne asset-fetch: nooit redirecten/routeren, alleen bestand ophalen.
+    if (request.headers.get(INTERNAL_ASSET_HEADER) === '1') {
+      return env.ASSETS.fetch(request);
+    }
+
     if (path.startsWith('/api/')) {
-      return proxyApi(request, path.replace(/^\/api\/?/, ''), env);
+      return proxyApi(request, path.replace(/^\/api\/?/, ''));
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return env.ASSETS.fetch(request);
     }
 
+    // Assets en echte bestanden direct serveren.
+    if (path === '/' || hasFileExtension(path)) {
+      return env.ASSETS.fetch(request);
+    }
+
     // Oude CMS-pagina URL: /pagina.html?slug=bestuur -> /bestuur
+    // Let op: deze wordt alleen geraakt als .html niet als asset wordt afgehandeld.
     if (path === '/pagina.html') {
       const slug = cleanSlug(url.searchParams.get('slug') || '');
       if (slug && slug !== 'home') return redirectTo(url, '/' + encodeURIComponent(slug));
@@ -54,16 +66,6 @@ export default {
     // Oude nieuwsdetail URL: /clubnieuws.html?id=... -> /nieuws/...
     if (path === '/clubnieuws.html' && url.searchParams.get('id')) {
       return redirectTo(url, '/nieuws/' + encodeURIComponent(url.searchParams.get('id')));
-    }
-
-    // Oude vaste .html URL's -> nette URL's.
-    if (HTML_REDIRECTS[path] && url.search === '') {
-      return redirectTo(url, HTML_REDIRECTS[path]);
-    }
-
-    // Laat bestaande bestanden/assets ongemoeid.
-    if (path === '/' || hasFileExtension(path)) {
-      return env.ASSETS.fetch(request);
     }
 
     // Nette nieuwsdetail-URL: /nieuws/<id> -> clubnieuws.html; JS leest ID uit path.
@@ -76,12 +78,12 @@ export default {
       return serveAsset(request, env, '/agenda.html');
     }
 
-    // Nette vaste URL's.
+    // Vaste nette URL's: /disciplines, /contact, /agenda, enz.
     if (STATIC_ROUTES[path]) {
       return serveAsset(request, env, STATIC_ROUTES[path]);
     }
 
-    // Veiligheid: /pagina zonder slug toont pagina.html, maar redirect niet door.
+    // /pagina zonder slug mag pagina.html tonen zonder redirect-loop.
     if (path === '/pagina') {
       return serveAsset(request, env, '/pagina.html');
     }
@@ -103,15 +105,8 @@ async function proxyApi(request, rawPath) {
   ['host', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'x-forwarded-proto', 'x-real-ip', 'cookie'].forEach(h => headers.delete(h));
   headers.set('accept', headers.get('accept') || 'application/json');
 
-  const init = {
-    method: request.method,
-    headers,
-    redirect: 'follow'
-  };
-
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    init.body = await request.arrayBuffer();
-  }
+  const init = { method: request.method, headers, redirect: 'follow' };
+  if (!['GET', 'HEAD'].includes(request.method)) init.body = await request.arrayBuffer();
 
   try {
     const response = await fetch(upstreamUrl, init);
@@ -121,17 +116,9 @@ async function proxyApi(request, rawPath) {
     outHeaders.set('access-control-allow-methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     outHeaders.set('access-control-allow-headers', 'content-type, authorization');
     outHeaders.delete('set-cookie');
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: outHeaders
-    });
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers: outHeaders });
   } catch (error) {
-    return Response.json({ ok: false, error: 'CMS API niet bereikbaar', detail: String(error && error.message || error) }, {
-      status: 502,
-      headers: corsHeaders()
-    });
+    return Response.json({ ok: false, error: 'CMS API niet bereikbaar', detail: String(error && error.message || error) }, { status: 502, headers: corsHeaders() });
   }
 }
 
@@ -148,15 +135,15 @@ function cleanSlug(value) {
     .replace(/^-+|-+$/g, '');
 }
 
-function hasFileExtension(path) {
-  return /\.[a-z0-9]{2,8}$/i.test(path);
-}
+function hasFileExtension(path) { return /\.[a-z0-9]{2,8}$/i.test(path); }
 
 function serveAsset(request, env, pathname) {
   const url = new URL(request.url);
   url.pathname = pathname;
   url.search = '';
-  return env.ASSETS.fetch(new Request(url.toString(), request));
+  const headers = new Headers(request.headers);
+  headers.set(INTERNAL_ASSET_HEADER, '1');
+  return env.ASSETS.fetch(new Request(url.toString(), { method: request.method, headers }));
 }
 
 function redirectTo(sourceUrl, targetPath) {
