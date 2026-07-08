@@ -311,6 +311,7 @@
     const path = location.pathname.replace(/\/+$/, '') || '/';
     if (path === '/' || path.endsWith('/index.html')) return 'home';
     if (path.startsWith('/nieuws/')) return 'clubnieuws';
+    if (path.startsWith('/agenda/')) return 'agenda';
     const f = (path.split('/').pop() || 'index.html').replace(/\.html$/, '');
     if (f === 'pagina' || f === 'page') return cleanSlug(querySlug || '');
     return cleanSlug(f);
@@ -328,7 +329,7 @@
     const path = location.pathname.replace(/\/+$/, '') || '/';
     const file = path.split('/').pop() || '';
     if (['pagina.html', 'page.html'].includes(file)) return true;
-    if (path === '/' || path.startsWith('/api') || path.startsWith('/nieuws/')) return false;
+    if (path === '/' || path.startsWith('/api') || path.startsWith('/nieuws/') || path.startsWith('/agenda/')) return false;
 
     // Belangrijk: vaste v4-pagina's mogen nooit als generieke CMS-pagina worden behandeld.
     // Anders kan een concept/lege CMS-pagina de werkende statische layout vervangen door 404.
