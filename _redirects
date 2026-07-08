@@ -1,5 +1,0 @@
-# PDN website v5 - alleen detailroutes rewriten.
-# Geen algemene wildcard en geen vaste pagina routes, om redirect-loops te voorkomen.
-
-/agenda/*   /agenda.html       200
-/nieuws/*   /clubnieuws.html   200
