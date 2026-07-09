@@ -264,6 +264,7 @@
       });
       applyManagedPageHeader(s);
       applyManagedDisciplineCards(s);
+      applyManagedDisciplineDetail(s);
     } catch (e) {
       // V4 fallback blijft zichtbaar.
     }
@@ -320,6 +321,96 @@
       if (imgEl && image) imgEl.src = absoluteMediaUrl(image);
       if (imgEl && title) imgEl.alt = title;
     });
+  }
+
+
+  function applyManagedDisciplineDetail(s) {
+    const slug = currentSlug();
+    const map = {'boogschieten':'boog','luchtdruk':'lucht','vuurwapen-disciplines':'vuur'};
+    const id = map[slug];
+    if (!id) return;
+    const k = 'discipline_detail_' + id + '_';
+    const hasAny = Object.keys(s || {}).some(x => x.startsWith(k));
+    if (!hasAny) return;
+
+    const hero = document.querySelector('.page-hero');
+    if (hero) {
+      const eyebrow = s[k + 'eyebrow'];
+      const title = s[k + 'title'];
+      const intro = s[k + 'intro'];
+      const image = s[k + 'hero_image'];
+      const eyebrowEl = hero.querySelector('.eyebrow');
+      const titleEl = hero.querySelector('h1');
+      const introEl = hero.querySelector('.lead') || hero.querySelector('p');
+      if (eyebrowEl && eyebrow) eyebrowEl.textContent = eyebrow;
+      if (titleEl && title) titleEl.textContent = title;
+      if (introEl && intro) introEl.textContent = intro;
+      if (image) {
+        const bg = absoluteMediaUrl(image);
+        hero.style.background = `linear-gradient(120deg,rgba(16,31,61,.94),rgba(16,31,61,.72)),url('${bg.replace(/'/g, "%27")}') center/cover`;
+      }
+    }
+
+    const gallery = document.querySelector('.gallery');
+    const galleryImages = splitSettingLines(s[k + 'gallery_images']);
+    if (gallery && galleryImages.length) {
+      const title = s[k + 'title'] || 'Discipline';
+      gallery.innerHTML = galleryImages.map((img, i) => `<img src="${escapeAttr(absoluteMediaUrl(img))}" alt="${escapeAttr(title)} foto ${i+1}">`).join('');
+    }
+
+    const mainGrid = document.querySelector('.grid.two');
+    if (mainGrid) {
+      const left = mainGrid.children && mainGrid.children[0];
+      const features = mainGrid.querySelector('.feature-list');
+      if (left) {
+        const badge = left.querySelector('.badge');
+        const h2 = left.querySelector('h2');
+        if (badge && s[k + 'badge']) badge.textContent = s[k + 'badge'];
+        if (h2 && s[k + 'content_title']) h2.textContent = s[k + 'content_title'];
+        const buttons = left.querySelector('.buttons');
+        const text = s[k + 'content_text'];
+        if (text) {
+          const html = splitParagraphs(text).map(x => `<p>${escapeHtml(x)}</p>`).join('');
+          Array.from(left.querySelectorAll('p')).forEach(p => p.remove());
+          if (buttons) buttons.insertAdjacentHTML('beforebegin', html);
+          else left.insertAdjacentHTML('beforeend', html);
+        }
+        if (buttons) {
+          const a = buttons.querySelectorAll('a');
+          if (a[0]) { if (s[k+'button_text']) a[0].textContent = s[k+'button_text']; if (s[k+'button_url']) a[0].setAttribute('href', s[k+'button_url']); }
+          if (a[1]) { if (s[k+'button2_text']) a[1].textContent = s[k+'button2_text']; if (s[k+'button2_url']) a[1].setAttribute('href', s[k+'button2_url']); }
+        }
+      }
+      if (features) {
+        const items = features.querySelectorAll('div');
+        [1,2,3].forEach((n, i) => {
+          const item = items[i];
+          if (!item) return;
+          const st = s[k + 'feature_' + n + '_title'];
+          const sx = s[k + 'feature_' + n + '_text'];
+          const strong = item.querySelector('strong');
+          const p = item.querySelector('p');
+          if (strong && st) strong.textContent = st;
+          if (p && sx) p.textContent = sx;
+        });
+      }
+    }
+
+    const notice = document.querySelector('.notice');
+    if (notice) {
+      const h2 = notice.querySelector('h2');
+      const p = notice.querySelector('p');
+      if (h2 && s[k + 'notice_title']) h2.textContent = s[k + 'notice_title'];
+      if (p && s[k + 'notice_text']) p.textContent = s[k + 'notice_text'];
+    }
+  }
+
+  function splitSettingLines(value) {
+    return String(value || '').split(/\n|,/).map(x => x.trim()).filter(Boolean);
+  }
+
+  function splitParagraphs(value) {
+    return String(value || '').split(/\n{2,}|\r?\n/).map(x => x.trim()).filter(Boolean);
   }
 
   async function loadMenu() {
