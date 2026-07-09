@@ -262,9 +262,64 @@
       document.querySelectorAll('.footer').forEach(el => {
         el.innerHTML = `<p>© ${new Date().getFullYear()} ${escapeHtml(name)} · ${escapeHtml(address)} · <a href="mailto:${escapeAttr(email)}">${escapeHtml(email)}</a></p>`;
       });
+      applyManagedPageHeader(s);
+      applyManagedDisciplineCards(s);
     } catch (e) {
       // V4 fallback blijft zichtbaar.
     }
+  }
+
+  function applyManagedPageHeader(s) {
+    const slug = currentSlug();
+    const key = 'page_' + slug + '_';
+    const eyebrow = s[key + 'eyebrow'];
+    const title = s[key + 'title'];
+    const intro = s[key + 'intro'];
+    const image = s[key + 'image'];
+
+    const hero = document.querySelector('.page-hero') || (slug === 'home' ? document.querySelector('.classic-home-hero') : null);
+    if (!hero) return;
+
+    const eyebrowEl = hero.querySelector('.eyebrow');
+    const titleEl = hero.querySelector('h1');
+    const introEl = hero.querySelector('.lead') || hero.querySelector('p');
+
+    if (eyebrowEl && eyebrow) eyebrowEl.textContent = eyebrow;
+    if (titleEl && title) titleEl.textContent = title;
+    if (introEl && intro) introEl.textContent = intro;
+    if (image) {
+      const bg = absoluteMediaUrl(image);
+      hero.style.background = `linear-gradient(120deg,rgba(16,31,61,.94),rgba(16,31,61,.72)),url('${bg.replace(/'/g, "%27")}') center/cover`;
+    }
+  }
+
+  function applyManagedDisciplineCards(s) {
+    const section = findHomeSectionByTitle('ontdek onze disciplines');
+    if (!section) return;
+    const cards = section.querySelectorAll('.discipline-card');
+    const ids = ['boog','lucht','vuur'];
+    ids.forEach((id, i) => {
+      const card = cards[i];
+      if (!card) return;
+      const tag = s['discipline_' + id + '_tag'];
+      const title = s['discipline_' + id + '_title'];
+      const text = s['discipline_' + id + '_text'];
+      const linkText = s['discipline_' + id + '_link_text'];
+      const url = s['discipline_' + id + '_url'];
+      const image = s['discipline_' + id + '_image'];
+      if (url) card.setAttribute('href', url);
+      const tagEl = card.querySelector('.tag');
+      const imgEl = card.querySelector('img');
+      const h3 = card.querySelector('h3');
+      const p = card.querySelector('.card-content p:not(.arrow)');
+      const arrow = card.querySelector('.arrow');
+      if (tagEl && tag) tagEl.textContent = tag;
+      if (h3 && title) h3.textContent = title;
+      if (p && text) p.textContent = text;
+      if (arrow && linkText) arrow.textContent = linkText;
+      if (imgEl && image) imgEl.src = absoluteMediaUrl(image);
+      if (imgEl && title) imgEl.alt = title;
+    });
   }
 
   async function loadMenu() {
