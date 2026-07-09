@@ -256,3 +256,6 @@ button:disabled{opacity:.65;cursor:not-allowed}
 .event-detail-card {
   overflow: hidden;
 }
+
+/* Sprint 5.10 - gekoppelde formulieren */
+.linked-form-wrap{margin-top:24px}.linked-form{display:grid;gap:14px}.linked-form label{display:grid;gap:6px;font-weight:700;color:#0b1d3a}.linked-form input,.linked-form textarea,.linked-form select{width:100%;border:1px solid #d9e3f0;border-radius:14px;padding:12px 14px;font:inherit;background:#fff;color:#0b1d3a}.linked-form textarea{min-height:120px;resize:vertical}.linked-form .check{display:flex;align-items:center;gap:10px}.linked-form .check input{width:auto}.linked-form button{justify-self:start}.linked-form .form-msg{font-weight:700;color:#5c6980}.lead.small{font-size:1rem;line-height:1.5}

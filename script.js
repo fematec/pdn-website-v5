@@ -54,6 +54,58 @@
     throw lastError || new Error('Versturen mislukt');
   }
 
+
+  async function renderLinkedForm(container, formId) {
+    if (!container || !formId) return;
+    const target = document.createElement('div');
+    target.className = 'linked-form-wrap card';
+    target.innerHTML = '<div class="card-content"><p>Formulier wordt geladen...</p></div>';
+    container.appendChild(target);
+    try {
+      const d = await api('/forms/' + encodeURIComponent(formId));
+      const form = pickObject(d, ['item','form']);
+      if (!form || form.status === 'archived' || form.status === 'deleted') { target.remove(); return; }
+      const fields = normalizeFormFields(form.fields);
+      target.innerHTML = `<div class="card-content"><h3>${escapeHtml(form.title || 'Formulier')}</h3>${form.description?`<p class="lead small">${escapeHtml(form.description)}</p>`:''}<form class="linked-form" data-form-slug="${escapeAttr(form.slug)}">${fields.map(formFieldHtml).join('')}<input type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true"><button type="submit">Versturen</button><p class="form-msg"></p></form></div>`;
+      const frm = target.querySelector('form');
+      const msg = target.querySelector('.form-msg');
+      frm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = frm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        msg.textContent = 'Versturen...';
+        try {
+          const data = Object.fromEntries(new FormData(frm).entries());
+          await apiPost('/public-forms/' + encodeURIComponent(form.slug) + '/submit', data);
+          frm.reset();
+          msg.textContent = 'Bedankt. Het formulier is verzonden.';
+        } catch (err) {
+          msg.textContent = err.message || 'Versturen mislukt.';
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    } catch (err) { target.remove(); }
+  }
+
+  function normalizeFormFields(fields) {
+    if (Array.isArray(fields)) return fields;
+    try { const parsed = JSON.parse(fields || '[]'); return Array.isArray(parsed) ? parsed : []; } catch(e) { return []; }
+  }
+  function formFieldHtml(f) {
+    const name = escapeAttr(f.name || f.label || 'veld');
+    const label = escapeHtml(f.label || f.name || 'Veld');
+    const required = f.required ? ' required' : '';
+    const req = f.required ? ' <span>*</span>' : '';
+    const placeholder = escapeAttr(f.placeholder || '');
+    const options = Array.isArray(f.options) ? f.options : String(f.options || '').split('\n').filter(Boolean);
+    if (f.type === 'textarea') return `<label>${label}${req}<textarea name="${name}" placeholder="${placeholder}"${required}></textarea></label>`;
+    if (f.type === 'select') return `<label>${label}${req}<select name="${name}"${required}><option value="">Kies...</option>${options.map(o=>`<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join('')}</select></label>`;
+    if (f.type === 'checkbox') return `<label class="check"><input type="checkbox" name="${name}" value="ja"${required}> ${label}${req}</label>`;
+    const type = f.type === 'email' ? 'email' : 'text';
+    return `<label>${label}${req}<input type="${type}" name="${name}" placeholder="${placeholder}"${required}></label>`;
+  }
+
   async function fetchJson(path) {
     const r = await fetch(path + '?v=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return [];
@@ -397,6 +449,7 @@
     section.id = 'cms-page-content';
     section.className = 'section compact cms-page-section';
     section.innerHTML = `<div class="cms-content card"><div class="card-content">${content}</div></div>`;
+    renderLinkedForm(section, page.form_id || page.linked_form_id || page.formId || page.form);
 
     const hero = document.querySelector('.page-hero') || document.querySelector('.hero');
     if (options.replaceStatic && hero) removeStaticSectionsAfter(hero);
@@ -614,6 +667,7 @@
       `<div class="card-content news-detail-content"><p><a href="/clubnieuws">← Terug naar clubnieuws</a></p><span class="badge">${escapeHtml(formatDate(newsDate(n)) || 'Clubnieuws')}</span><h2>${escapeHtml(title)}</h2><div class="cms-content">${content || '<p>Geen berichttekst ingevuld.</p>'}</div></div>` +
       `${extraPhotos ? `<div class="card-content"><h3>Foto’s bij dit bericht</h3><div class="gallery-grid news-media-grid">${extraPhotos}</div></div>` : ''}` +
     `</article>`;
+    renderLinkedForm(el.querySelector('article'), n.form_id || n.linked_form_id || n.formId || n.form);
   }
 
   function newsSlug(n) {
@@ -819,7 +873,9 @@
       const e = pickObject(d, ['item','event']);
       if (!e || e.status !== 'published') throw new Error('Niet gevonden');
       const content = e.content || `<p>${escapeHtml(e.summary||'')}</p>`;
-      el.innerHTML = `<article class="card news-detail-card event-detail-card">${e.cover_image?`<img class="news-detail-cover" src="${escapeAttr(e.cover_image)}" alt="${escapeAttr(e.title||'Agenda')}">`:''}<div class="card-content news-detail-content"><p><a href="/agenda">← Terug naar agenda</a></p><span class="badge">${escapeHtml(eventDateLabel(e))}</span><h2>${escapeHtml(e.title||'Evenement')}</h2>${e.location?`<p><strong>Locatie:</strong> ${escapeHtml(e.location)}</p>`:''}${e.contact_person?`<p><strong>Contactpersoon:</strong> ${escapeHtml(e.contact_person)}</p>`:''}<div class="cms-content">${content}</div>${e.signup_enabled?`<div class="notice"><h3>Aanmelden</h3><p>Voor deze activiteit is aanmelden mogelijk. Neem contact op met de vereniging.</p>${e.max_participants?`<p>Maximaal aantal deelnemers: ${Number(e.max_participants)}</p>`:''}</div>`:''}</div></article>`;
+      const linkedFormId = e.form_id || e.linked_form_id || e.formId || e.form;
+      el.innerHTML = `<article class="card news-detail-card event-detail-card">${e.cover_image?`<img class="news-detail-cover" src="${escapeAttr(e.cover_image)}" alt="${escapeAttr(e.title||'Agenda')}">`:''}<div class="card-content news-detail-content"><p><a href="/agenda">← Terug naar agenda</a></p><span class="badge">${escapeHtml(eventDateLabel(e))}</span><h2>${escapeHtml(e.title||'Evenement')}</h2>${e.location?`<p><strong>Locatie:</strong> ${escapeHtml(e.location)}</p>`:''}${e.contact_person?`<p><strong>Contactpersoon:</strong> ${escapeHtml(e.contact_person)}</p>`:''}<div class="cms-content">${content}</div>${(e.signup_enabled && !linkedFormId)?`<div class="notice"><h3>Aanmelden</h3><p>Voor deze activiteit is aanmelden mogelijk. Neem contact op met de vereniging.</p>${e.max_participants?`<p>Maximaal aantal deelnemers: ${Number(e.max_participants)}</p>`:''}</div>`:''}</div></article>`;
+      renderLinkedForm(el.querySelector('article'), linkedFormId);
     } catch (err) {
       el.innerHTML = `<article class="card"><div class="card-content"><h2>Activiteit niet gevonden</h2><p>Deze activiteit bestaat niet of is nog niet gepubliceerd.</p><p><a class="btn dark" href="/agenda">Terug naar agenda</a></p></div></article>`;
     }
