@@ -469,7 +469,9 @@
 
       const title = p.title || p.name || slug;
       const lead = p.summary || p.excerpt || p.lead || '';
-      setPageHero(title, lead);
+      // Vaste paginaheaders komen uit Instellingen en mogen niet door de CMS-pagina-inhoud overschreven worden.
+      const managedHeaderSlugs = ['clubnieuws','fotogalerij','agenda','over-ons','disciplines','geschiedenis','contact'];
+      if (!managedHeaderSlugs.includes(slug)) setPageHero(title, lead);
       document.title = p.seo_title || `${title} | S.V. De Prins der Nederlanden`;
       applySeoMeta({
         title: p.seo_title || title,
@@ -961,7 +963,7 @@
   // V4-layout herstel: header, merknaam, navigatie en footer blijven uit de HTML/CSS.
   // Sprint 3 maakt pagina-inhoud wel dynamisch: bestaande pagina's worden vervangen door
   // CMS-inhoud zodra die gepubliceerd en gevuld is. Nieuwe CMS-pagina's zijn bereikbaar via nette URL's zoals /bestuur, met oude URL's als fallback.
-  // loadSettings();
+  loadSettings();
   loadMenu();
   loadHomepageSettings();
   loadCmsPage();
