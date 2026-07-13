@@ -450,7 +450,7 @@
 
 
   function isCompleteMainMenu(items) {
-    const required = ['home', 'disciplines', 'clubnieuws', 'fotogalerij', 'over-ons', 'geschiedenis', 'contact'];
+    const required = ['home', 'disciplines', 'clubnieuws', 'fotogalerij', 'agenda', 'over-ons', 'geschiedenis', 'contact'];
     const found = new Set();
     for (const item of items) {
       const href = menuHref(item);
